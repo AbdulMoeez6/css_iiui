@@ -1,43 +1,92 @@
-generator client { provider = "prisma-client-js" }
-datasource db   { provider = "postgresql"; url = env("DATABASE_URL") }
-
-model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  password  String
-  role      String    @default("admin")
-  createdAt DateTime  @default(now())
-  sessions  Session[]
+generator client {
+  provider = "prisma-client-js"
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expires      DateTime
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Event {
-  id        String   @id @default(cuid())
-  title     String
-  date      String
-  img       String?
-  excerpt   String?
-  createdAt DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String    @db.Text
+  date        DateTime
+  images      String[]  // array of encrypted filenames (S3 keys)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([date])
+}
+
+model News {
+  id          Int      @id @default(autoincrement())
+  title       String
+  details     String   @db.Text
+  date        DateTime
+  image       String   // encrypted filename
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
 }
 
 model TeamMember {
-  id   String @id @default(cuid())
-  name String
-  role String
-  img  String?
+  id          Int      @id @default(autoincrement())
+  name        String
+  designation String
+  details     String?  @db.Text
+  image       String?  // encrypted filename
+  instagram   String?
+  linkedin    String?
+  facebook    String?
+  discord     String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model Sponsor {
-  id   String @id @default(cuid())
-  name String
-  logo String?
-  url  String?
+model TimelineItem {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  highlights  String
+  details     String   @db.Text
+  image       String   // encrypted filename
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+enum BlogCategory {
+  TECH        // programming, tools, frameworks
+  RESEARCH    // academic, case studies, project write-ups
+  EVENTS      // event recaps, announcements, highlights
+  NEWS        // society or industry news
+  OPINION     // thought pieces, commentary
+  OTHER       // anything uncategorized or miscellaneous
+}
+
+model Post {
+  id          Int          @id @default(autoincrement())
+  title       String
+  slug        String       @unique
+  category    BlogCategory @default(OTHER)
+  description String       @db.Text
+  image       String       // encrypted filename
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([createdAt])
+}
+
+model GalleryImage {
+  id                Int      @id @default(autoincrement())
+  encryptedFileName String   @unique
+  title             String?
+  createdAt         DateTime @default(now())
 }
