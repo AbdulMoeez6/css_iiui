@@ -1,92 +1,106 @@
-generator client {
-  provider = "prisma-client-js"
-}
+  generator client {
+    provider = "prisma-client-js"
+  }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+  datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+  }
 
-model Event {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String    @db.Text
-  date        DateTime
-  images      String[]  // array of encrypted filenames (S3 keys)
+  model Event {
+    id          Int          @id @default(autoincrement())
+    title       String
+    description String       @db.Text
+    date        DateTime
+    images      EventImage[] // relation
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
 
-  @@index([date])
-}
+    @@index([date])
+  }
 
-model News {
-  id          Int      @id @default(autoincrement())
-  title       String
-  details     String   @db.Text
-  date        DateTime
-  image       String   // encrypted filename
+  model EventImage {
+    id            Int      @id @default(autoincrement())
+    event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+    eventId       Int
+    encryptedName String   // S3 encrypted key
+    priority      Int      @default(2) // 1 = featured, 2 = normal
 
-  @@index([date])
-}
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
 
-model TeamMember {
-  id          Int      @id @default(autoincrement())
-  name        String
-  designation String
-  details     String?  @db.Text
-  image       String?  // encrypted filename
-  instagram   String?
-  linkedin    String?
-  facebook    String?
-  discord     String?
+    @@index([priority])
+  }
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
+  model News {
+    id          Int      @id @default(autoincrement())
+    title       String
+    details     String   @db.Text
+    date        DateTime
+    image       String   // encrypted filename
 
-model TimelineItem {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  highlights  String
-  details     String   @db.Text
-  image       String   // encrypted filename
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+    @@index([date])
+  }
 
-  @@index([date])
-}
+  model TeamMember {
+    id          Int      @id @default(autoincrement())
+    name        String
+    designation String
+    details     String?  @db.Text
+    image       String?  // encrypted filename
+    instagram   String?
+    linkedin    String?
+    facebook    String?
+    discord     String?
 
-enum BlogCategory {
-  TECH        // programming, tools, frameworks
-  RESEARCH    // academic, case studies, project write-ups
-  EVENTS      // event recaps, announcements, highlights
-  NEWS        // society or industry news
-  OPINION     // thought pieces, commentary
-  OTHER       // anything uncategorized or miscellaneous
-}
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+  }
 
-model Post {
-  id          Int          @id @default(autoincrement())
-  title       String
-  slug        String       @unique
-  category    BlogCategory @default(OTHER)
-  description String       @db.Text
-  image       String       // encrypted filename
+  model TimelineItem {
+    id          Int      @id @default(autoincrement())
+    date        DateTime
+    highlights  String
+    details     String   @db.Text
+    image       String   // encrypted filename
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
 
-  @@index([createdAt])
-}
+    @@index([date])
+  }
 
-model GalleryImage {
-  id                Int      @id @default(autoincrement())
-  encryptedFileName String   @unique
-  title             String?
-  createdAt         DateTime @default(now())
-}
+  enum BlogCategory {
+    TECH
+    RESEARCH
+    EVENTS
+    NEWS
+    OPINION
+    OTHER
+  }
+
+  model Post {
+    id          Int          @id @default(autoincrement())
+    title       String
+    slug        String       @unique
+    category    BlogCategory @default(OTHER)
+    description String       @db.Text
+    image       String       // encrypted filename
+
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+
+    @@index([createdAt])
+  }
+
+  model GalleryImage {
+    id                Int      @id @default(autoincrement())
+    encryptedFileName String   @unique
+    title             String?
+    createdAt         DateTime @default(now())
+  }

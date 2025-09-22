@@ -1,27 +1,36 @@
-import crypto from 'crypto';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import crypto from "crypto";
 
-export const randomImageName = (bytes = 32) => crypto.randomBytes(bytes).toString('hex');
-
-export const s3 = new S3Client({
-  region: process.env.BUCKET_REGION,
+export const s3 = new S3Client({   // 👈 export here
+  region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId: process.env.ACCESS_KEY,
-    secretAccessKey: process.env.SECRET_ACCESS_KEY
-  }
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
-export const signGet = (Key) =>
-  getSignedUrl(s3, new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key }), { expiresIn: 3600 });
+export function randomImageName(bytes = 32) {
+  return crypto.randomBytes(bytes).toString("hex");
+}
 
-export const putObject = (Key, Body, ContentType) =>
-  s3.send(new PutObjectCommand({ Bucket: process.env.BUCKET_NAME, Key, Body, ContentType }));
+export async function putObject({ key, body, contentType }) {
+  const command = new PutObjectCommand({
+    Bucket: process.env.AWS_BUCKET,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  });
+  return await s3.send(command);
+}
 
-export const deleteObject = (Key) =>
-  s3.send(new DeleteObjectCommand({ Bucket: process.env.BUCKET_NAME, Key }));
+export async function deleteObject(key) {
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.AWS_BUCKET,
+    Key: key,
+  });
+  return await s3.send(command);
+}
+
+export function signGet(key) {
+  return `https://${process.env.AWS_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+}
