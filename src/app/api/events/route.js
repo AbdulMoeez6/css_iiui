@@ -1,42 +1,59 @@
 import prisma from '@/lib/prisma';
-import sharp from 'sharp';
-import { randomImageName, putObject, signGet } from '@/lib/s3';
 
 export const runtime = 'nodejs';
 
+// GET: return events and images, attach public file URLs
 export async function GET() {
-  const events = await prisma.event.findMany({ orderBy: [{ date: 'desc' }], include: { images: true } });
-  // attach signed URLs for each event image
-  const out = await Promise.all(events.map(async ev => ({
-    ...ev,
-    images: await Promise.all(ev.images.map(async img => ({ id: img.id, encryptedName: img.encryptedName, priority: img.priority, url: await signGet(img.encryptedName) })))
-  })));
-  return new Response(JSON.stringify(out), { headers: { 'Content-Type': 'application/json' } });
+  try {
+    const events = await prisma.event.findMany({
+      orderBy: { date: 'desc' },
+      include: { images: true },
+    });
+
+    // map images to include fileUrl (public)
+    const out = events.map(ev => ({
+      ...ev,
+      images: ev.images.map(img => ({
+        id: img.id,
+        encryptedName: img.encryptedName,
+        priority: img.priority,
+        fileUrl: `https://${process.env.AWS_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${img.encryptedName}`
+      }))
+    }));
+    return new Response(JSON.stringify(out), { headers: { 'Content-Type': 'application/json' } });
+  } catch (err) {
+    console.error('GET /api/events error', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
 }
 
+// POST: expects JSON: { title, description, date, images: [{ key, priority }] }
 export async function POST(req) {
-  const contentType = (req.headers.get('content-type') || '');
-  if (contentType.includes('multipart/form-data')) {
-    const form = await req.formData();
-    const title = (form.get('title') || '').toString();
-    const description = (form.get('description') || '').toString();
-    const date = new Date((form.get('date') || '').toString() || Date.now());
-
-    const event = await prisma.event.create({ data: { title, description, date } });
-
-    const files = form.getAll('images');
-    for (let f of files) {
-      if (!f) continue;
-      const buffer = Buffer.from(await f.arrayBuffer());
-      const output = await sharp(buffer).resize({ width: 1600 }).webp().toBuffer();
-      const encryptedName = `${randomImageName()}.webp`;
-      await putObject(encryptedName, output, 'image/webp');
-      await prisma.eventImage.create({ data: { eventId: event.id, encryptedName, priority: 2 } });
-    }
-    return new Response(JSON.stringify({ ok: true, id: event.id }), { status: 201 });
-  } else {
+  try {
     const body = await req.json();
-    const event = await prisma.event.create({ data: { title: body.title || 'Untitled', description: body.description || '', date: body.date ? new Date(body.date) : new Date() } });
-    return new Response(JSON.stringify(event), { status: 201 });
+    const { title, description = '', date = new Date().toISOString(), images = [] } = body;
+
+    if (!title) return new Response(JSON.stringify({ error: 'title required' }), { status: 400 });
+
+    const ev = await prisma.event.create({
+      data: {
+        title,
+        description,
+        date: new Date(date),
+        images: {
+          create: images.map(img => ({
+            encryptedName: img.key,
+            priority: typeof img.priority === 'number' ? img.priority : 2
+          }))
+        }
+      },
+      include: { images: true }
+    });
+
+    console.log('[DEBUG] created event id=', ev.id);
+    return new Response(JSON.stringify(ev), { status: 201, headers: { 'Content-Type': 'application/json' } });
+  } catch (err) {
+    console.error('POST /api/events error', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }

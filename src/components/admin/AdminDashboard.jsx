@@ -1,30 +1,29 @@
 'use client';
 import { useState } from 'react';
-import EventsManager from './EventsManager';
-import PostsManager from './PostsManager';
-// import TeamManager, TimelineManager, GalleryManager when ready
+import EventEditor from '@/components/admin/EventEditor';
+import EventsManager from '@/components/EventsManager';
 
-export default function AdminDashboard(){
-  const [tab,setTab]=useState('Events');
-  const tabs = ['Events','Posts','Team','Timeline','Gallery'];
+export default function AdminEvents() {
+  const [editing, setEditing] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   return (
-    <div className="section py-12">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="section-title">Dashboard</h1>
-        <form action="/api/auth/logout" method="post">
-          <button className="btn-ghost" type="submit">Sign out</button>
-        </form>
-      </div>
+    <div className="p-6">
+      <button
+        onClick={() => setEditing({})}
+        className="mb-4 px-3 py-1 bg-green-600 text-white rounded"
+      >
+        + Add Event
+      </button>
 
-      <div className="flex gap-3 border-b border-white/10 pb-3 mb-6">
-        {tabs.map(t=> <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 rounded ${tab===t? 'bg-white text-black font-bold':'text-white/70'}`}>{t}</button> )}
-      </div>
-
-      <div>
-        {tab === 'Events' && <EventsManager/>}
-        {tab === 'Posts' && <PostsManager/>}
-        {/* Add TeamManager, TimelineManager, GalleryManager similarly */}
-      </div>
+      {editing ? (
+        <EventEditor
+          event={editing}
+          onSaved={() => { setEditing(null); setRefreshKey(k => k + 1); }}
+        />
+      ) : (
+        <EventsManager key={refreshKey} />
+      )}
     </div>
   );
 }
